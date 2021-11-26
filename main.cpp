@@ -3,14 +3,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
 int main()
 {
-    List* list = CreateList();
+    List* list = CreateList("List");
+    int value = 0;
     PushBack(list, 10);
     PushBack(list, 15);
-    printf("%d\n",PopFront(list));
-    printf("%d\n", PopBack(list));
+    PopFront(list, &value);
+    PopBack(list, &value);
     PushFront(list, 1);
     PushBack(list, 2);
     PushFront(list, 3);
@@ -23,10 +23,11 @@ int main()
     PushBack(list, 10);
     PushFront(list, 11);
     PushBack(list, 12);
-    Insert(list, 1, 12);
+    Insert(list, 1, 15);
     RemoveElem(list, 1);
-    printf("%d\n", PopBack(list));
-    printf("%d\n", PopBack(list));
+    PopBack(list, &value);
+    PopBack(list, &value);
     CleanList(list);
+
     return 0;
 }

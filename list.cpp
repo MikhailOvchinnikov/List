@@ -1,60 +1,41 @@
-#define LIST 10
-
-//Coefficient of resize stack's capacity
-#define RESIZE_COEF 2
-
-//Canary's value
-#define CANARY 0xFF
 
 #include "list.h"
 #include "security.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
-typedef struct List
+#define LIST 10
+
+//Coefficient of resize list's capacity
+#define RESIZE_COEF 2
+
+//Canary's value
+#define CANARY 0xFF
+
+#define NotNULL(list_ptr) \
+ListExists(list_ptr)
+
+//Def function for check list adequate
+#define ListOK(list, line, func, file) { \
+AssertFunction(list, line, func, file);	 \
+}
+
+
+List* CreateList(const char name[])
 {
-    int can_l;
-
-    Data* data;
-
-    int* can_n_l;
-    int* mem_next;
-    int* next;
-    int* can_n_r;
-
-    int* can_p_l;
-    int* mem_prev;
-    int* prev;
-    int* can_p_r;
-
-    int can_r;
-} List;
-
-typedef struct Data
-{
-    int can_l;
-
-    int* can_d_l;
-    int* mem_data;
-    int* data;
-    int* can_d_r;
-
-    int head;
-    int tail;
-
-    int capacity;
-    int size;
-    int can_r;
-} Data;
-
-
-List* CreateList()
-{
-    List* list = (List*)malloc(sizeof(List));
-    list->data = (Data*)malloc(sizeof(Data));
+    List* list = (List*)calloc(1, sizeof(List));
+    list->data = (Data*)calloc(1, sizeof(Data));
     list->data->mem_data = (int*)calloc(LIST + 2, sizeof(int));
     list->mem_next = (int*)calloc(LIST + 2, sizeof(int));
     list->mem_prev = (int*)calloc(LIST + 2, sizeof(int));
+
+    NotNULL(list);
+    if (errno)
+    {
+        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        return nullptr;
+    }
 
     list->can_n_l = &(list->mem_next[0]);
     list->can_p_l = &(list->mem_prev[0]);
@@ -67,12 +48,13 @@ List* CreateList()
     list->prev = &(list->mem_prev[1]);
     list->data->data = &(list->data->mem_data[1]);
 
-    *(list->can_n_l) = CANARY;
-    *(list->can_p_l) = CANARY;
-    *(list->data->can_d_l) = CANARY;
-    *(list->can_n_r) = CANARY;
-    *(list->can_p_r) = CANARY;
-    *(list->data->can_d_r) = CANARY;
+    list->data->mem_data[0] = CANARY;
+    list->mem_next[0] = CANARY;
+    list->mem_prev[0] = CANARY;
+
+    list->data->mem_data[LIST + 1] = CANARY;
+    list->mem_next[LIST + 1] = CANARY;
+    list->mem_prev[LIST + 1] = CANARY;
 
 
     for (int i = 0; i < LIST; i++)
@@ -89,20 +71,38 @@ List* CreateList()
     list->can_r = CANARY;
     list->data->can_l = CANARY;
     list->data->can_r = CANARY;
-
-    return list;
+    NameInititialization(list->name, name);
+    HashClear(list);
+    HashCalc(list);
+    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    if (errno)
+    {
+        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        return nullptr;
+    }
+    else
+    {
+        FileLog("List \"%s\" was created successfully\n", list->name);
+        return list;
+    }
 }
 
 
-void PushBack(List* list, int value)
+int PushBack(List* list, int value)
 {
-    if (list == NULL)
+    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    if (errno)
     {
-        AssertFunction(list);
+        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        return errno;
     }
     if (list->data->size >= list->data->capacity)
     {
-        Resize(list);
+        if (Resize(list))
+        {
+            FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+            return errno;
+        }
     }
 
     if (list->data->size == 0)
@@ -130,18 +130,35 @@ void PushBack(List* list, int value)
         }
         list->data->size++;
     }
+    HashClear(list);
+    HashCalc(list);
+    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    if (errno)
+    {
+        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+    }
+    else
+    {
+        FileLog("Command %s of the list \"%s\" was successful, value %d\n", __FUNCTION__, list->name, value);
+    }
+    return errno;
 }
 
 
-void PushFront(List* list, int value)
+int PushFront(List* list, int value)
 {
-    if (list == NULL)
+    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    if (errno)
     {
-        AssertFunction(list);
+        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        return errno;
     }
     if (list->data->size >= list->data->capacity)
     {
-        Resize(list);
+        if (Resize(list))
+        {
+            return errno;
+        }
     }
 
     if (list->data->size == 0)
@@ -170,18 +187,36 @@ void PushFront(List* list, int value)
         }
         list->data->size++;
     }
+    HashClear(list);
+    HashCalc(list);
+    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    if (errno)
+    {
+        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+    }
+    else
+    {
+        FileLog("Command %s of the list \"%s\" was successful, value %d\n", __FUNCTION__, list->name, value);
+    }
+    return errno;
 }
 
 
-void Insert(List* list, int position, int value)
+int Insert(List* list, int position, int value)
 {
-    if (list == NULL)
+    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    if (errno)
     {
-        AssertFunction(list);
+        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        return errno;
     }
     if (list->data->size >= list->data->capacity)
     {
-        Resize(list);
+        if (Resize(list))
+        {
+            FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+            return errno;
+        }
     }
 
     for (int i = 0; i < list->data->capacity; i++)
@@ -198,68 +233,132 @@ void Insert(List* list, int position, int value)
         }
     }
     list->data->size++;
+    HashClear(list);
+    HashCalc(list);
+    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    if (errno)
+    {
+        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+    }
+    else
+    {
+        FileLog("Command %s of the list \"%s\" was successful, value %d, position %d\n", __FUNCTION__, list->name, value, position);
+    }
+    return errno;
 }
 
 
-int PopBack(List* list)
+int PopBack(List* list, int* value)
 {
-    if (list == NULL)
+    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    if (errno)
     {
-        AssertFunction(list);
+        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        return errno;
     }
     int tail = list->data->tail;
-    int value = list->data->data[tail];
+    *value = list->data->data[tail];
     list->data->tail = list->prev[tail];
     list->next[tail] = -1;
     list->next[list->data->tail] = 0;
     list->prev[tail] = -1;
     list->data->size--;
-    return value;
+    HashClear(list);
+    HashCalc(list);
+    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    if (errno)
+    {
+        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+    }
+    else
+    {
+        FileLog("Command %s of the list \"%s\" was successful, value %d\n", __FUNCTION__, list->name, *value);
+    }
+    return errno;
 }
 
 
-int PopFront(List* list)
+int PopFront(List* list, int* value)
 {
-    if (list == NULL)
+    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    if (errno)
     {
-        AssertFunction(list);
+        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        return errno;
     }
     int head = list->data->head;
-    int value = list->data->data[head];
+    *value = list->data->data[head];
     list->data->head = list->next[head];
     list->prev[head] = -1;
     list->prev[list->data->head] = 0;
     list->next[head] = -1;
     list->data->size--;
-    return value;
+    HashClear(list);
+    HashCalc(list);
+    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    if (errno)
+    {
+        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+    }
+    else
+    {
+        FileLog("Command %s of the list \"%s\" was successful, value %d\n", __FUNCTION__, list->name, *value);
+    }
+    return errno;
 }
 
 
-void RemoveElem(List* list, int n)
+int RemoveElem(List* list, int n)
 {
-    if (list == NULL)
+    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    if (errno)
     {
-        AssertFunction(list);
+        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        return errno;
     }
+    int value = list->data->data[n];
     list->next[list->prev[n]] = list->next[n];
     list->prev[list->next[n]] = list->prev[n];
     list->next[n] = -1;
     list->prev[n] = -1;
     list->data->size--;
+    HashClear(list);
+    HashCalc(list);
+    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    if (errno)
+    {
+        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+    }
+    else
+    {
+        FileLog("Command %s of the list \"%s\" was successful, value %d, position %d\n", __FUNCTION__, list->name, value, n);
+    }
+    return errno;
 }
 
-
-void Resize(List* list)
+int Resize(List* list)
 {
-    if (list == NULL)
+    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+
+    if (errno)
     {
-        AssertFunction(list);
+        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        return errno;
     }
+
     int old_capacity = list->data->capacity;
     list->data->capacity *= RESIZE_COEF;
     list->data->mem_data = (int*)realloc(list->data->mem_data, (list->data->capacity + 2) * sizeof(int)); 
     list->mem_next = (int*)realloc(list->mem_next, (list->data->capacity + 2) * sizeof(int));
     list->mem_prev = (int*)realloc(list->mem_prev, (list->data->capacity + 2) * sizeof(int));
+
+    NotNULL(list);
+
+    if (errno)
+    {
+        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        return errno;
+    }
 
     list->next = &(list->mem_next[1]);
     list->prev = &(list->mem_prev[1]);
@@ -271,24 +370,24 @@ void Resize(List* list)
         list->prev[i] = -1;
     }
 
-    *list->data->can_d_l = 0;
-    *list->data->can_d_r = 0;
-    *list->can_n_l = 0;
-    *list->can_n_r = 0;
-    *list->can_p_l = 0;
-    *list->can_p_r = 0;
+
     list->data->mem_data[0] = CANARY;
     list->mem_next[0] = CANARY;
     list->mem_prev[0] = CANARY;
+
     list->data->mem_data[list->data->capacity + 1] = CANARY;
     list->mem_next[list->data->capacity + 1] = CANARY;
     list->mem_prev[list->data->capacity + 1] = CANARY;
+
+
     list->data->can_d_l = &(list->data->mem_data[0]);
     list->can_n_l = &(list->mem_next[0]);
     list->can_p_l = &(list->mem_prev[0]);
+
     list->data->can_d_r = &(list->data->mem_data[list->data->capacity + 1]);
     list->can_n_r = &(list->mem_next[list->data->capacity + 1]);
     list->can_p_r = &(list->mem_prev[list->data->capacity + 1]);
+
     /*for (int i = 0; i < list->data->capacity + 2; i++)
     {
         printf("%d ", list->data->mem_data[i]);
@@ -299,15 +398,42 @@ void Resize(List* list)
         printf("%d ", list->mem_next[i]);
     }
     printf("\n");*/
+
+    HashClear(list);
+    HashCalc(list);
+    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    if (errno)
+    {
+        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+    }
+    else
+    {
+        FileLog("Command %s of the list \"%s\" was successful, value %d\n", __FUNCTION__, list->name, list->data->capacity);
+    }
+    return errno;
+}
+
+
+void NameInititialization(char target_name[], const char get_name[])
+{
+    size_t i = 0;
+    for (i = 0; i < (strnlen(get_name, 31)); i++)
+    {
+        target_name[i] = get_name[i];
+    }
+    target_name[i] = '\0';
 }
 
 
 void CleanList(List* list)
 {
+    FileLog("List \"%s\" is deleting...\n", list->name);
+
     free(list->data->mem_data);
     free(list->data);
     free(list->mem_next);
     free(list->mem_prev);
     free(list);
 
+    FileLog("Deleting was successful");
 }
