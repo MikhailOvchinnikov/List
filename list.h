@@ -69,4 +69,6 @@ int Resize(List* list);
 
 void NameInititialization(char target_name[], const char get_name[]);
 
+void DataInitialization(List* list);
+
 void CleanList(List* list);

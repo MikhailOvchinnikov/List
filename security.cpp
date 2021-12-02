@@ -33,66 +33,80 @@ int HashFunc(void* inf, int size)
     return result;
 }
 
-void HashClear(List* list)
+void HashClear(List* list_ptr)
 {
-    list->hash = 0;
-    list->data->hash = 0;
-    list->hash_prev = 0;
-    list->hash_next = 0;
-    list->data->hash_data = 0;
+    Data* data_struct = list_ptr->data;
+
+    list_ptr->hash = 0;
+    data_struct->hash = 0;
+    list_ptr->hash_prev = 0;
+    list_ptr->hash_next = 0;
+    data_struct->hash_data = 0;
 }
 
-void HashCalc(List* list)
+void HashCalc(List* list_ptr)
 {
-    list->hash = HashFunc(list, sizeof(*list));
-    list->data->hash = HashFunc(list->data, sizeof(*list->data));
-    list->hash_prev = HashFunc(list->prev, list->data->capacity * sizeof(list->prev[0]));
-    list->hash_next = HashFunc(list->next, list->data->capacity * sizeof(list->next[0]));
-    list->data->hash_data = HashFunc(list->data->data, list->data->capacity * sizeof(list->data->data[0]));
+    Data* data_struct = list_ptr->data;
+    int cap = list_ptr->data->capacity;
+
+    list_ptr->hash = HashFunc(list_ptr, sizeof(*list_ptr));
+    data_struct->hash = HashFunc(data_struct, sizeof(*data_struct));
+    list_ptr->hash_prev = HashFunc(list_ptr->prev, cap * sizeof(list_ptr->prev[0]));
+    list_ptr->hash_next = HashFunc(list_ptr->next, cap * sizeof(list_ptr->next[0]));
+    data_struct->hash_data = HashFunc(data_struct->data, cap * sizeof(data_struct->data[0]));
 }
 
 
-bool CheckHash(List* list)
+bool CheckHash(List* list_ptr)
 {
-    int prev_h_list = list->hash;
-    int prev_h_dat = list->data->hash;
-    int prev_h_datp = list->hash_prev;
-    int prev_h_datn = list->hash_next;
-    int prev_h_arr = list->data->hash_data;
+    Data* data_struct = list_ptr->data;
+    int cap = list_ptr->data->capacity;
 
-    list->hash = 0;
-    list->data->hash = 0;
-    list->hash_prev = 0;
-    list->hash_next = 0;
-    list->data->hash_data = 0;
+    int prev_h_list = list_ptr->hash;
+    int prev_h_dat = data_struct->hash;
+    int prev_h_datp = list_ptr->hash_prev;
+    int prev_h_datn = list_ptr->hash_next;
+    int prev_h_arr = data_struct->hash_data;
 
-    int a = HashFunc(list->data->data, list->data->capacity * sizeof(list->data->data[0]));
+    list_ptr->hash = 0;
+    data_struct->hash = 0;
+    list_ptr->hash_prev = 0;
+    list_ptr->hash_next = 0;
+    data_struct->hash_data = 0;
 
-    bool ret = HashFunc(list, sizeof(*list)) == prev_h_list && HashFunc(list->data, sizeof(*(list->data))) == prev_h_dat &&
-        HashFunc(list->prev, list->data->capacity * sizeof(list->prev[0])) == prev_h_datp &&
-        HashFunc(list->next, list->data->capacity * sizeof(list->next[0])) == prev_h_datn && 
-        HashFunc(list->data->data, list->data->capacity * sizeof(list->data->data[0])) == prev_h_arr;
+    int a = HashFunc(data_struct->data, cap * sizeof(data_struct->data[0]));
 
-    list->hash = prev_h_list;
-    list->data->hash = prev_h_dat;
-    list->hash_prev = prev_h_datp;
-    list->hash_next = prev_h_datn;
-    list->data->hash_data = prev_h_arr;
-    return ret;
+    bool ret_1 = HashFunc(list_ptr, sizeof(*list_ptr)) == prev_h_list;
+    bool ret_2 = HashFunc(list_ptr->data, sizeof(*(list_ptr->data))) == prev_h_dat;
+    bool ret_3 = HashFunc(list_ptr->prev, cap * sizeof(list_ptr->prev[0])) == prev_h_datp;
+    bool ret_4 = HashFunc(list_ptr->next, cap * sizeof(list_ptr->next[0])) == prev_h_datn;
+    bool ret_5 = HashFunc(data_struct->data, cap * sizeof(data_struct->data[0])) == prev_h_arr;
+
+    list_ptr->hash = prev_h_list;
+    data_struct->hash = prev_h_dat;
+    list_ptr->hash_prev = prev_h_datp;
+    list_ptr->hash_next = prev_h_datn;
+    data_struct->hash_data = prev_h_arr;
+    return ret_1 && ret_2 && ret_3 && ret_4 && ret_5;
 }
 
-bool CheckCanaries(List* list)
+bool CheckCanaries(List* list_ptr)
 {
-    return ((list->can_l == CANARY) && (list->can_r == CANARY) &&
-        (list->data->can_l == CANARY) && (list->data->can_r == CANARY) &&
-        (*list->can_n_l == CANARY) && (*list->can_n_r == CANARY) &&
-        (*list->can_p_l == CANARY) && (*list->can_p_r == CANARY) &&
-        (*list->data->can_d_l == CANARY) && (*list->data->can_d_r == CANARY));
+    Data* data_struct = list_ptr->data;
+    bool ret_1 = list_ptr->can_l == CANARY && list_ptr->can_r == CANARY;
+    bool ret_2 = data_struct->can_l == CANARY && data_struct->can_r == CANARY;
+    bool ret_3 = *list_ptr->can_n_l == CANARY && *list_ptr->can_n_r == CANARY;
+    bool ret_4 = *list_ptr->can_p_l == CANARY && *list_ptr->can_p_r == CANARY;
+    bool ret_5 = *data_struct->can_d_l == CANARY && *data_struct->can_d_r == CANARY;
+
+    return ret_1 && ret_2 && ret_3 && ret_4 && ret_5;
 }
 
-bool CheckSizes(List* list)
+bool CheckSizes(List* list_ptr)
 {
-    return ((list->data->size <= list->data->capacity) && (list->data->size >= 0) && (list->data->capacity >= 0));
+    int cap = list_ptr->data->capacity;
+    int size = list_ptr->data->size;
+    return ((size <= cap) && (size >= 0) && (cap >= 0));
 }
 
 
@@ -102,14 +116,19 @@ void Dump(const List* list_ptr, int line, const char* func, const char* file)
     {
         return;
     }
+
+    Data* data_struct = list_ptr->data;
+    int cap = list_ptr->data->capacity;
+    int size = list_ptr->data->size;
+
     FileLog("List<>[%p] \"%s\" in the \"%d\" line of the function \"%s\" in programm at \"%s\"\n", list_ptr, list_ptr->name, line, func, file);
-    FileLog("Size = %d\nCapacity = %d\n", list_ptr->data->size, list_ptr->data->capacity);
-    FileLog("data[%p]\n\t{\n", &list_ptr->data->data);
-    for (int i = 0; i < list_ptr->data->capacity; i++)
+    FileLog("Size = %d\nCapacity = %d\n", size, cap);
+    FileLog("data[%p]\n\t{\n", &data_struct->data);
+    for (int i = 0; i < cap; i++)
     {
-        if (i < list_ptr->data->size)
+        if (i < size)
         {
-            FileLog("\t\t[%d] %d\n", i, list_ptr->data->data[i]);
+            FileLog("\t\t[%d] %d\n", i, data_struct->data[i]);
         }
         else
         {
@@ -121,7 +140,9 @@ void Dump(const List* list_ptr, int line, const char* func, const char* file)
 
 void ListExists(List* list_ptr)
 {
-    if (!list_ptr || !list_ptr->data || !list_ptr->data->mem_data ||
+    Data* data_struct = list_ptr->data;
+
+    if (!list_ptr || !list_ptr->data || !data_struct->mem_data ||
         !list_ptr->mem_next || !list_ptr->mem_prev)
     {
         FileLog("\n\n\t\tBAD LIST\n\n\n");
@@ -130,25 +151,25 @@ void ListExists(List* list_ptr)
 }
 
 
-void AssertFunction(List* list, int line, const char* func, const char* file)
+void AssertFunction(List* list_ptr, int line, const char* func, const char* file)
 {
-    ListExists(list);
+    ListExists(list_ptr);
     if (!errno)
     {
-        if (!CheckCanaries(list)) {
+        if (!CheckCanaries(list_ptr)) {
             FileLog("\n\n\t\tCANARY DIED\n\n\n");
-            Dump(list, line, func, file);
+            Dump(list_ptr, line, func, file);
             errno = ErrorCodes::CANARYDIED;
         }
-        if (!CheckSizes(list)) {
+        if (!CheckSizes(list_ptr)) {
             FileLog("\n\n\t\tBAD SIZE\n\n\n");
-            Dump(list, line, func, file);
+            Dump(list_ptr, line, func, file);
             errno = ErrorCodes::BADSIZE;
         }
-        if (!CheckHash(list))
+        if (!CheckHash(list_ptr))
         {
             FileLog("\n\n\t\tHASH ERROR\n\n\n");
-            Dump(list, line, func, file);
+            Dump(list_ptr, line, func, file);
             errno = ErrorCodes::BADHASH;
         }
     }

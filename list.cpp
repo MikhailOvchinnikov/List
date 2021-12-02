@@ -7,7 +7,7 @@
 
 #define LIST 10
 
-//Coefficient of resize list's capacity
+//Coefficient of resize list_ptr's capacity
 #define RESIZE_COEF 2
 
 //Canary's value
@@ -16,399 +16,373 @@
 #define NotNULL(list_ptr) \
 ListExists(list_ptr)
 
-//Def function for check list adequate
-#define ListOK(list, line, func, file) { \
-AssertFunction(list, line, func, file);	 \
+//Def function for check list_ptr adequate
+#define ListOK(list_ptr, line, func, file) { \
+AssertFunction(list_ptr, line, func, file);	 \
 }
 
 
 List* CreateList(const char name[])
 {
-    List* list = (List*)calloc(1, sizeof(List));
-    list->data = (Data*)calloc(1, sizeof(Data));
-    list->data->mem_data = (int*)calloc(LIST + 2, sizeof(int));
-    list->mem_next = (int*)calloc(LIST + 2, sizeof(int));
-    list->mem_prev = (int*)calloc(LIST + 2, sizeof(int));
+    List* list_ptr = (List*)calloc(1, sizeof(List));
+    list_ptr->data = (Data*)calloc(1, sizeof(Data));
+    Data* data_struct = list_ptr->data;
 
-    NotNULL(list);
+    data_struct->mem_data = (int*)calloc(LIST + 2, sizeof(int));
+    list_ptr->mem_next = (int*)calloc(LIST + 2, sizeof(int));
+    list_ptr->mem_prev = (int*)calloc(LIST + 2, sizeof(int));
+
+    NotNULL(list_ptr);
     if (errno)
     {
-        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
         return nullptr;
     }
 
-    list->can_n_l = &(list->mem_next[0]);
-    list->can_p_l = &(list->mem_prev[0]);
-    list->data->can_d_l = &(list->data->mem_data[0]);
-    list->can_n_r = &(list->mem_next[LIST + 1]);
-    list->can_p_r = &(list->mem_prev[LIST + 1]);
-    list->data->can_d_r = &(list->data->mem_data[LIST + 1]);
+    data_struct->capacity = LIST;
+    data_struct->size = 0;
+    data_struct->head = 0;
+    data_struct->tail = 0;
 
-    list->next = &(list->mem_next[1]);
-    list->prev = &(list->mem_prev[1]);
-    list->data->data = &(list->data->mem_data[1]);
+    data_struct->can_l = CANARY;
+    data_struct->can_r = CANARY;
+    list_ptr->can_l = CANARY;
+    list_ptr->can_r = CANARY;
 
-    list->data->mem_data[0] = CANARY;
-    list->mem_next[0] = CANARY;
-    list->mem_prev[0] = CANARY;
-
-    list->data->mem_data[LIST + 1] = CANARY;
-    list->mem_next[LIST + 1] = CANARY;
-    list->mem_prev[LIST + 1] = CANARY;
-
+    DataInitialization(list_ptr);
 
     for (int i = 0; i < LIST; i++)
     {
-        list->next[i] = -1;
-        list->prev[i] = -1;
+        list_ptr->next[i] = -1;
+        list_ptr->prev[i] = -1;
     }
-    list->data->capacity = LIST;
-    list->data->size = 0;
-    list->data->head = 0;
-    list->data->tail = 0;
 
-    list->can_l = CANARY;
-    list->can_r = CANARY;
-    list->data->can_l = CANARY;
-    list->data->can_r = CANARY;
-    NameInititialization(list->name, name);
-    HashClear(list);
-    HashCalc(list);
-    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    NameInititialization(list_ptr->name, name);
+    HashClear(list_ptr);
+    HashCalc(list_ptr);
+    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
     if (errno)
     {
-        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
         return nullptr;
     }
     else
     {
-        FileLog("List \"%s\" was created successfully\n", list->name);
-        return list;
+        FileLog("List \"%s\" was created successfully\n", list_ptr->name);
+        return list_ptr;
     }
 }
 
 
-int PushBack(List* list, int value)
+int PushBack(List* list_ptr, int value)
 {
-    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
     if (errno)
     {
-        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
         return errno;
     }
-    if (list->data->size >= list->data->capacity)
+
+    Data* data_struct = list_ptr->data;
+    int cap = data_struct->capacity;
+    int* size = &data_struct->size;
+
+    if (*size >= cap)
     {
-        if (Resize(list))
+        if (Resize(list_ptr))
         {
-            FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+            FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
             return errno;
         }
     }
 
-    if (list->data->size == 0)
+    if (list_ptr->data->size == 0)
     {
-        list->data->data[0] = value;
-        list->next[0] = 0;
-        list->data->tail = 0;
-        list->data->size++;
+        data_struct->data[0] = value;
+        list_ptr->next[0] = 0;
+        data_struct->tail = 0;
+        data_struct->size++;
     }
     else
     {
-        for (int i = 0; i < list->data->capacity; i++)
+        for (int i = 0; i < cap; i++)
         {
-            if (list->next[i] == -1)
+            if (list_ptr->next[i] == -1)
             {
-                list->data->data[i] = value;
-                list->next[i] = list->data->head;
+                data_struct->data[i] = value;
+                list_ptr->next[i] = data_struct->head;
 
-                int temp_next = list->data->tail;
-                list->next[temp_next] = i;
-                list->prev[i] = temp_next;
-                list->data->tail = i;
+                int temp_next = data_struct->tail;
+                list_ptr->next[temp_next] = i;
+                list_ptr->prev[i] = temp_next;
+                data_struct->tail = i;
                 break;
             }
         }
-        list->data->size++;
+        ++*size;
     }
-    HashClear(list);
-    HashCalc(list);
-    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    HashClear(list_ptr);
+    HashCalc(list_ptr);
+    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
     if (errno)
     {
-        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
     }
     else
     {
-        FileLog("Command %s of the list \"%s\" was successful, value %d\n", __FUNCTION__, list->name, value);
+        FileLog("Command %s of the list_ptr \"%s\" was successful, value %d\n", __FUNCTION__, list_ptr->name, value);
     }
     return errno;
 }
 
 
-int PushFront(List* list, int value)
+int PushFront(List* list_ptr, int value)
 {
-    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
     if (errno)
     {
-        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
         return errno;
     }
-    if (list->data->size >= list->data->capacity)
+
+    Data* data_struct = list_ptr->data;
+    int cap = data_struct->capacity;
+    int *size = &data_struct->size;
+
+    if (*size >= cap)
     {
-        if (Resize(list))
+        if (Resize(list_ptr))
         {
             return errno;
         }
     }
 
-    if (list->data->size == 0)
+    if (size == 0)
     {
-        list->data->data[0] = value;
-        list->next[0] = 0;
-        list->data->tail = 0;
-        list->data->size++;
+        data_struct->data[0] = value;
+        list_ptr->next[0] = 0;
+        data_struct->tail = 0;
+        data_struct->size++;
     }
     else
     {
-        for (int i = 0; i < list->data->capacity; i++)
+        for (int i = 0; i < cap; i++)
         {
-            if (list->next[i] == -1)
+            if (list_ptr->next[i] == -1)
             {
-                list->data->data[i] = value;
+                data_struct->data[i] = value;
 
-                int* temp_next = &(list->data->head);
-                list->next[i] = *temp_next;
-                list->next[list->data->tail] = i;
-                list->prev[i] = 0;
-                list->prev[*temp_next] = i;
-                list->data->head = i;
+                int* temp_next = &(data_struct->head);
+                list_ptr->next[i] = *temp_next;
+                list_ptr->next[data_struct->tail] = i;
+                list_ptr->prev[i] = 0;
+                list_ptr->prev[*temp_next] = i;
+                data_struct->head = i;
                 break;
             }
         }
-        list->data->size++;
+        ++*size;
     }
-    HashClear(list);
-    HashCalc(list);
-    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    HashClear(list_ptr);
+    HashCalc(list_ptr);
+    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
     if (errno)
     {
-        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
     }
     else
     {
-        FileLog("Command %s of the list \"%s\" was successful, value %d\n", __FUNCTION__, list->name, value);
+        FileLog("Command %s of the list_ptr \"%s\" was successful, value %d\n", __FUNCTION__, list_ptr->name, value);
     }
     return errno;
 }
 
 
-int Insert(List* list, int position, int value)
+int Insert(List* list_ptr, int position, int value)
 {
-    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
     if (errno)
     {
-        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
         return errno;
     }
-    if (list->data->size >= list->data->capacity)
+    if (list_ptr->data->size >= list_ptr->data->capacity)
     {
-        if (Resize(list))
+        if (Resize(list_ptr))
         {
-            FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+            FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
             return errno;
         }
     }
+    Data* data_struct = list_ptr->data;
 
-    for (int i = 0; i < list->data->capacity; i++)
+    for (int i = 0; i < data_struct->capacity; i++)
     {
-        if (list->next[i] == -1)
+        if (list_ptr->next[i] == -1)
         {
-            int* lpp = &(list->prev[position]);
-            list->data->data[i] = value;
-            list->next[i] = list->next[*lpp];
-            list->next[*lpp] = i;
-            list->prev[i] = *lpp;
+            int* lpp = &(list_ptr->prev[position]);
+            data_struct->data[i] = value;
+            list_ptr->next[i] = list_ptr->next[*lpp];
+            list_ptr->next[*lpp] = i;
+            list_ptr->prev[i] = *lpp;
             *lpp = i;
             break;
         }
     }
-    list->data->size++;
-    HashClear(list);
-    HashCalc(list);
-    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    data_struct->size++;
+    HashClear(list_ptr);
+    HashCalc(list_ptr);
+    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
     if (errno)
     {
-        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
     }
     else
     {
-        FileLog("Command %s of the list \"%s\" was successful, value %d, position %d\n", __FUNCTION__, list->name, value, position);
+        FileLog("Command %s of the list_ptr \"%s\" was successful, value %d, position %d\n", __FUNCTION__, list_ptr->name, value, position);
     }
     return errno;
 }
 
 
-int PopBack(List* list, int* value)
+int PopBack(List* list_ptr, int* value)
 {
-    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
     if (errno)
     {
-        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
         return errno;
     }
-    int tail = list->data->tail;
-    *value = list->data->data[tail];
-    list->data->tail = list->prev[tail];
-    list->next[tail] = -1;
-    list->next[list->data->tail] = 0;
-    list->prev[tail] = -1;
-    list->data->size--;
-    HashClear(list);
-    HashCalc(list);
-    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+
+    Data* data_struct = list_ptr->data;
+    int tail = data_struct->tail;
+    *value = data_struct->data[tail];
+
+    data_struct->tail = list_ptr->prev[tail];
+    list_ptr->next[tail] = -1;
+    list_ptr->next[data_struct->tail] = 0;
+    list_ptr->prev[tail] = -1;
+    data_struct->size--;
+
+    HashClear(list_ptr);
+    HashCalc(list_ptr);
+    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
     if (errno)
     {
-        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
     }
     else
     {
-        FileLog("Command %s of the list \"%s\" was successful, value %d\n", __FUNCTION__, list->name, *value);
+        FileLog("Command %s of the list_ptr \"%s\" was successful, value %d\n", __FUNCTION__, list_ptr->name, *value);
     }
     return errno;
 }
 
 
-int PopFront(List* list, int* value)
+int PopFront(List* list_ptr, int* value)
 {
-    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
     if (errno)
     {
-        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
         return errno;
     }
-    int head = list->data->head;
-    *value = list->data->data[head];
-    list->data->head = list->next[head];
-    list->prev[head] = -1;
-    list->prev[list->data->head] = 0;
-    list->next[head] = -1;
-    list->data->size--;
-    HashClear(list);
-    HashCalc(list);
-    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    int head = list_ptr->data->head;
+    *value = list_ptr->data->data[head];
+    list_ptr->data->head = list_ptr->next[head];
+    list_ptr->prev[head] = -1;
+    list_ptr->prev[list_ptr->data->head] = 0;
+    list_ptr->next[head] = -1;
+    list_ptr->data->size--;
+    HashClear(list_ptr);
+    HashCalc(list_ptr);
+    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
     if (errno)
     {
-        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
     }
     else
     {
-        FileLog("Command %s of the list \"%s\" was successful, value %d\n", __FUNCTION__, list->name, *value);
+        FileLog("Command %s of the list_ptr \"%s\" was successful, value %d\n", __FUNCTION__, list_ptr->name, *value);
     }
     return errno;
 }
 
 
-int RemoveElem(List* list, int n)
+int RemoveElem(List* list_ptr, int n)
 {
-    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
     if (errno)
     {
-        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
         return errno;
     }
-    int value = list->data->data[n];
-    list->next[list->prev[n]] = list->next[n];
-    list->prev[list->next[n]] = list->prev[n];
-    list->next[n] = -1;
-    list->prev[n] = -1;
-    list->data->size--;
-    HashClear(list);
-    HashCalc(list);
-    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    int value = list_ptr->data->data[n];
+    list_ptr->next[list_ptr->prev[n]] = list_ptr->next[n];
+    list_ptr->prev[list_ptr->next[n]] = list_ptr->prev[n];
+    list_ptr->next[n] = -1;
+    list_ptr->prev[n] = -1;
+    list_ptr->data->size--;
+    HashClear(list_ptr);
+    HashCalc(list_ptr);
+    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
     if (errno)
     {
-        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
     }
     else
     {
-        FileLog("Command %s of the list \"%s\" was successful, value %d, position %d\n", __FUNCTION__, list->name, value, n);
+        FileLog("Command %s of the list_ptr \"%s\" was successful, value %d, position %d\n", __FUNCTION__, list_ptr->name, value, n);
     }
     return errno;
 }
 
-int Resize(List* list)
+int Resize(List* list_ptr)
 {
-    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
 
     if (errno)
     {
-        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
         return errno;
     }
 
-    int old_capacity = list->data->capacity;
-    list->data->capacity *= RESIZE_COEF;
-    list->data->mem_data = (int*)realloc(list->data->mem_data, (list->data->capacity + 2) * sizeof(int)); 
-    list->mem_next = (int*)realloc(list->mem_next, (list->data->capacity + 2) * sizeof(int));
-    list->mem_prev = (int*)realloc(list->mem_prev, (list->data->capacity + 2) * sizeof(int));
+    Data* data_struct = list_ptr->data;
 
-    NotNULL(list);
+    int old_capacity = data_struct->capacity;
+    data_struct->capacity *= RESIZE_COEF;
+    int cap = data_struct->capacity;
+
+    data_struct->mem_data = (int*)realloc(data_struct->mem_data, (cap + 2) * sizeof(int)); 
+    list_ptr->mem_next = (int*)realloc(list_ptr->mem_next, (cap + 2) * sizeof(int));
+    list_ptr->mem_prev = (int*)realloc(list_ptr->mem_prev, (cap + 2) * sizeof(int));
+
+    NotNULL(list_ptr);
 
     if (errno)
     {
-        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
         return errno;
     }
 
-    list->next = &(list->mem_next[1]);
-    list->prev = &(list->mem_prev[1]);
-    list->data->data = &(list->data->mem_data[1]);
+    DataInitialization(list_ptr);
 
-    for (int i = old_capacity; i < list->data->capacity; i++)
+    for (int i = old_capacity; i < cap; i++)
     {
-        list->next[i] = -1;
-        list->prev[i] = -1;
+        list_ptr->next[i] = -1;
+        list_ptr->prev[i] = -1;
     }
 
-
-    list->data->mem_data[0] = CANARY;
-    list->mem_next[0] = CANARY;
-    list->mem_prev[0] = CANARY;
-
-    list->data->mem_data[list->data->capacity + 1] = CANARY;
-    list->mem_next[list->data->capacity + 1] = CANARY;
-    list->mem_prev[list->data->capacity + 1] = CANARY;
-
-
-    list->data->can_d_l = &(list->data->mem_data[0]);
-    list->can_n_l = &(list->mem_next[0]);
-    list->can_p_l = &(list->mem_prev[0]);
-
-    list->data->can_d_r = &(list->data->mem_data[list->data->capacity + 1]);
-    list->can_n_r = &(list->mem_next[list->data->capacity + 1]);
-    list->can_p_r = &(list->mem_prev[list->data->capacity + 1]);
-
-    /*for (int i = 0; i < list->data->capacity + 2; i++)
-    {
-        printf("%d ", list->data->mem_data[i]);
-    }
-    printf("\n");
-    for (int i = 0; i < list->data->capacity + 2; i++)
-    {
-        printf("%d ", list->mem_next[i]);
-    }
-    printf("\n");*/
-
-    HashClear(list);
-    HashCalc(list);
-    ListOK(list, __LINE__, __FUNCTION__, __FILE__);
+    HashClear(list_ptr);
+    HashCalc(list_ptr);
+    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
     if (errno)
     {
-        FileLog("Error command %s of the list \"%s\"\n", __FUNCTION__, list->name);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
     }
     else
     {
-        FileLog("Command %s of the list \"%s\" was successful, value %d\n", __FUNCTION__, list->name, list->data->capacity);
+        FileLog("Command %s of the list_ptr \"%s\" was successful, value %d\n", __FUNCTION__, list_ptr->name, cap);
     }
     return errno;
 }
@@ -425,15 +399,43 @@ void NameInititialization(char target_name[], const char get_name[])
 }
 
 
-void CleanList(List* list)
+void DataInitialization(List* list_ptr)
 {
-    FileLog("List \"%s\" is deleting...\n", list->name);
+    Data* data_struct = list_ptr->data;
+    int* ptr_data = data_struct->mem_data;
+    int cap = data_struct->capacity;
 
-    free(list->data->mem_data);
-    free(list->data);
-    free(list->mem_next);
-    free(list->mem_prev);
-    free(list);
+
+    ptr_data[0] = CANARY;
+    list_ptr->mem_next[0] = CANARY;
+    list_ptr->mem_prev[0] = CANARY;
+
+    ptr_data[cap + 1] = CANARY;
+    list_ptr->mem_next[cap + 1] = CANARY;
+    list_ptr->mem_prev[cap + 1] = CANARY;
+
+    list_ptr->can_n_l = &list_ptr->mem_next[0];
+    list_ptr->can_p_l = &list_ptr->mem_prev[0];
+    list_ptr->can_n_r = &list_ptr->mem_next[cap + 1];
+    list_ptr->can_p_r = &list_ptr->mem_prev[cap + 1];
+    data_struct->can_d_r = &ptr_data[cap + 1];
+    data_struct->can_d_l = &ptr_data[0];
+
+    list_ptr->next = &list_ptr->mem_next[1];
+    list_ptr->prev = &list_ptr->mem_prev[1];
+    data_struct->data = &ptr_data[1];
+}
+
+
+void CleanList(List* list_ptr)
+{
+    FileLog("List \"%s\" is deleting...\n", list_ptr->name);
+
+    free(list_ptr->data->mem_data);
+    free(list_ptr->data);
+    free(list_ptr->mem_next);
+    free(list_ptr->mem_prev);
+    free(list_ptr);
 
     FileLog("Deleting was successful");
 }
