@@ -52,6 +52,7 @@ typedef struct Data
 } Data;
 
 
+
 /// <summary>
 /// Create and initializate new List
 /// </summary>
@@ -113,6 +114,23 @@ int PopFront(List* list_ptr, int* value);
 /// <param name="n">Place at the List for delete element</param>
 /// <returns>Return 0, if all actions were succesfull, else return error code</returns>
 int RemoveElem(List* list_ptr, int n);
+
+
+/// <summary>
+/// Return size of List
+/// </summary>
+/// <param name="list_ptr">Transmitted List</param>
+/// <param name="dst">Transmitted pointer to the variable</param>
+/// <returns>Return 0, if all actions were succesfull, else return error code</returns>
+int Size(List* stack, int* dst);
+
+/// <summary>
+/// Return capacity of List
+/// </summary>
+/// <param name="list_ptr">Transmitted List</param>
+/// <param name="dst">Transmitted pointer to the variable</param>
+/// <returns>Return 0, if all actions were succesfull, else return error code</returns>
+int Capacity(List* stack, int* dst);
 
 
 /// <summary>

@@ -92,7 +92,7 @@ void Dump(const List* list_ptr, int line, const char* func, const char* file);
 /// Detect valid or not pointer to the List
 /// </summary>
 /// <param name="list_ptr">Pointer to the List</param>
-void ListExists(List* list_ptr);
+int ListExists(void* list_ptr);
 
 
 /// <summary>
@@ -102,4 +102,4 @@ void ListExists(List* list_ptr);
 /// <param name="line">Error occurence line</param>
 /// <param name="func">Error occurence function</param>
 /// <param name="file">Error occurence file</param>
-void AssertFunction(List* list_ptr, int line, const char* func, const char* file);
+int AssertFunction(List* list_ptr, int line, const char* func, const char* file);

@@ -5,7 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#define LIST 10
+//Initial size of list
+#define INITIAL_SIZE 10
 
 //Coefficient of resize list_ptr's capacity
 #define RESIZE_COEF 2
@@ -13,33 +14,46 @@
 //Canary's value
 #define CANARY 0xFF
 
-#define NotNULL(list_ptr) \
-ListExists(list_ptr)
+#define NotNULL(list_ptr) ListExists(list_ptr)
 
 //Def function for check list_ptr adequate
-#define ListOK(list_ptr, line, func, file) { \
-AssertFunction(list_ptr, line, func, file);	 \
-}
+#define ListOK(list_ptr, line, func, file) AssertFunction(list_ptr, line, func, file)
 
 
 List* CreateList(const char name[])
 {
     List* list_ptr = (List*)calloc(1, sizeof(List));
-    list_ptr->data = (Data*)calloc(1, sizeof(Data));
-    Data* data_struct = list_ptr->data;
 
-    data_struct->mem_data = (int*)calloc(LIST + 2, sizeof(int));
-    list_ptr->mem_next = (int*)calloc(LIST + 2, sizeof(int));
-    list_ptr->mem_prev = (int*)calloc(LIST + 2, sizeof(int));
-
-    NotNULL(list_ptr);
-    if (errno)
+    if (NotNULL(list_ptr))
     {
+        CleanList(list_ptr);
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
         return nullptr;
     }
 
-    data_struct->capacity = LIST;
+    list_ptr->data = (Data*)calloc(1, sizeof(Data));
+
+    if (NotNULL(list_ptr->data))
+    {
+        CleanList(list_ptr);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
+        return nullptr;
+    }
+
+    Data* data_struct = list_ptr->data;
+
+    data_struct->mem_data = (int*)calloc(INITIAL_SIZE + 2, sizeof(int));
+    list_ptr->mem_next = (int*)calloc(INITIAL_SIZE + 2, sizeof(int));
+    list_ptr->mem_prev = (int*)calloc(INITIAL_SIZE + 2, sizeof(int));
+
+    if (NotNULL(data_struct->mem_data) || NotNULL(list_ptr->mem_next) || NotNULL(list_ptr->mem_prev))
+    {
+        CleanList(list_ptr);
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
+        return nullptr;
+    }
+
+    data_struct->capacity = INITIAL_SIZE;
     data_struct->size = 0;
     data_struct->head = 0;
     data_struct->tail = 0;
@@ -51,7 +65,7 @@ List* CreateList(const char name[])
 
     DataInitialization(list_ptr);
 
-    for (int i = 0; i < LIST; i++)
+    for (int i = 0; i < INITIAL_SIZE; i++)
     {
         list_ptr->next[i] = -1;
         list_ptr->prev[i] = -1;
@@ -60,8 +74,7 @@ List* CreateList(const char name[])
     NameInititialization(list_ptr->name, name);
     HashClear(list_ptr);
     HashCalc(list_ptr);
-    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
-    if (errno)
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
     {
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
         return nullptr;
@@ -76,36 +89,35 @@ List* CreateList(const char name[])
 
 int PushBack(List* list_ptr, int value)
 {
-    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
-    if (errno)
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
     {
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
-        return errno;
+        return -1;
     }
 
     Data* data_struct = list_ptr->data;
-    int cap = data_struct->capacity;
+    int* cap = &data_struct->capacity;
     int* size = &data_struct->size;
 
-    if (*size >= cap)
+    if (*size == *cap)
     {
         if (Resize(list_ptr))
         {
             FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
-            return errno;
+            return -1;
         }
     }
 
-    if (list_ptr->data->size == 0)
+    if (*size == 0)
     {
         data_struct->data[0] = value;
         list_ptr->next[0] = 0;
         data_struct->tail = 0;
-        data_struct->size++;
+        ++*size;
     }
     else
     {
-        for (int i = 0; i < cap; i++)
+        for (int i = 0; i < *cap; i++)
         {
             if (list_ptr->next[i] == -1)
             {
@@ -123,37 +135,36 @@ int PushBack(List* list_ptr, int value)
     }
     HashClear(list_ptr);
     HashCalc(list_ptr);
-    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
-    if (errno)
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
     {
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
+        return -1;
     }
     else
     {
         FileLog("Command %s of the list_ptr \"%s\" was successful, value %d\n", __FUNCTION__, list_ptr->name, value);
+        return 0;
     }
-    return errno;
 }
 
 
 int PushFront(List* list_ptr, int value)
 {
-    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
-    if (errno)
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
     {
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
-        return errno;
+        return -1;
     }
 
     Data* data_struct = list_ptr->data;
-    int cap = data_struct->capacity;
+    int *cap = &data_struct->capacity;
     int *size = &data_struct->size;
 
-    if (*size >= cap)
+    if (*size == *cap)
     {
         if (Resize(list_ptr))
         {
-            return errno;
+            return -1;
         }
     }
 
@@ -162,11 +173,11 @@ int PushFront(List* list_ptr, int value)
         data_struct->data[0] = value;
         list_ptr->next[0] = 0;
         data_struct->tail = 0;
-        data_struct->size++;
+        ++*size;
     }
     else
     {
-        for (int i = 0; i < cap; i++)
+        for (int i = 0; i < *cap; i++)
         {
             if (list_ptr->next[i] == -1)
             {
@@ -185,38 +196,41 @@ int PushFront(List* list_ptr, int value)
     }
     HashClear(list_ptr);
     HashCalc(list_ptr);
-    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
-    if (errno)
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
     {
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
+        return -1;
     }
     else
     {
         FileLog("Command %s of the list_ptr \"%s\" was successful, value %d\n", __FUNCTION__, list_ptr->name, value);
+        return 0;
     }
-    return errno;
 }
 
 
 int Insert(List* list_ptr, int position, int value)
 {
-    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
-    if (errno)
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
     {
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
-        return errno;
+        return -1;
     }
-    if (list_ptr->data->size >= list_ptr->data->capacity)
+
+    Data* data_struct = list_ptr->data;
+    int* cap = &data_struct->capacity;
+    int* size = &data_struct->size;
+
+    if (*size == *cap)
     {
         if (Resize(list_ptr))
         {
             FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
-            return errno;
+            return -1;
         }
     }
-    Data* data_struct = list_ptr->data;
 
-    for (int i = 0; i < data_struct->capacity; i++)
+    for (int i = 0; i < *cap; i++)
     {
         if (list_ptr->next[i] == -1)
         {
@@ -229,29 +243,28 @@ int Insert(List* list_ptr, int position, int value)
             break;
         }
     }
-    data_struct->size++;
+    ++*size;
     HashClear(list_ptr);
     HashCalc(list_ptr);
-    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
-    if (errno)
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
     {
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
+        return -1;
     }
     else
     {
         FileLog("Command %s of the list_ptr \"%s\" was successful, value %d, position %d\n", __FUNCTION__, list_ptr->name, value, position);
+        return 0;
     }
-    return errno;
 }
 
 
 int PopBack(List* list_ptr, int* value)
 {
-    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
-    if (errno)
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
     {
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
-        return errno;
+        return -1;
     }
 
     Data* data_struct = list_ptr->data;
@@ -266,76 +279,129 @@ int PopBack(List* list_ptr, int* value)
 
     HashClear(list_ptr);
     HashCalc(list_ptr);
-    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
-    if (errno)
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
     {
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
+        return -1;
     }
     else
     {
         FileLog("Command %s of the list_ptr \"%s\" was successful, value %d\n", __FUNCTION__, list_ptr->name, *value);
+        return 0;
     }
-    return errno;
 }
 
 
 int PopFront(List* list_ptr, int* value)
 {
-    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
-    if (errno)
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
     {
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
-        return errno;
+        return -1;
     }
+
+    Data* data_struct = list_ptr->data;
+    int* size = &data_struct->size;
     int head = list_ptr->data->head;
-    *value = list_ptr->data->data[head];
-    list_ptr->data->head = list_ptr->next[head];
+    *value = data_struct->data[head];
+    data_struct->head = list_ptr->next[head];
     list_ptr->prev[head] = -1;
-    list_ptr->prev[list_ptr->data->head] = 0;
+    list_ptr->prev[head] = 0;
     list_ptr->next[head] = -1;
-    list_ptr->data->size--;
+    --*size;
     HashClear(list_ptr);
     HashCalc(list_ptr);
-    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
-    if (errno)
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
     {
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
+        return -1;
     }
     else
     {
         FileLog("Command %s of the list_ptr \"%s\" was successful, value %d\n", __FUNCTION__, list_ptr->name, *value);
+        return 0;
     }
-    return errno;
 }
 
 
 int RemoveElem(List* list_ptr, int n)
 {
-    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
-    if (errno)
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
     {
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
-        return errno;
+        return -1;
     }
-    int value = list_ptr->data->data[n];
+
+    Data* data_struct = list_ptr->data;
+    int* size = &data_struct->size;
+    int value = data_struct->data[n];
     list_ptr->next[list_ptr->prev[n]] = list_ptr->next[n];
     list_ptr->prev[list_ptr->next[n]] = list_ptr->prev[n];
     list_ptr->next[n] = -1;
     list_ptr->prev[n] = -1;
-    list_ptr->data->size--;
+    --*size;
     HashClear(list_ptr);
     HashCalc(list_ptr);
-    ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__);
-    if (errno)
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
     {
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
+        return -1;
     }
     else
     {
         FileLog("Command %s of the list_ptr \"%s\" was successful, value %d, position %d\n", __FUNCTION__, list_ptr->name, value, n);
+        return 0;
     }
-    return errno;
 }
+
+
+int Size(List* list_ptr, int* dst)
+{
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
+    {
+        FileLog("Error command %s of the stack \"%s\"\n", __FUNCTION__, list_ptr->name);
+        return -1;
+    }
+    Data* data_struct = list_ptr->data;
+
+    *dst = data_struct->size;
+
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
+    {
+        FileLog("Error command %s of the stack \"%s\"\n", __FUNCTION__, list_ptr->name);
+        return -1;
+    }
+    else
+    {
+        FileLog("Command %s of the stack \"%s\" was successful, value %d\n", __FUNCTION__, list_ptr->name, *dst);
+        return 0;
+    }
+}
+
+
+int Capacity(List* list_ptr, int* dst)
+{
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
+    {
+        FileLog("Error command %s of the stack \"%s\"\n", __FUNCTION__, list_ptr->name);
+        return -1;
+    }
+    Data* data_struct = list_ptr->data;
+
+    *dst = data_struct->capacity;
+
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
+    {
+        FileLog("Error command %s of the stack \"%s\"\n", __FUNCTION__, list_ptr->name);
+        return -1;
+    }
+    else
+    {
+        FileLog("Command %s of the stack \"%s\" was successful, value %d\n", __FUNCTION__, list_ptr->name, *dst);
+        return 0;
+    }
+}
+
 
 int Resize(List* list_ptr)
 {
@@ -344,30 +410,28 @@ int Resize(List* list_ptr)
     if (errno)
     {
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
-        return errno;
+        return -1;
     }
 
     Data* data_struct = list_ptr->data;
 
     int old_capacity = data_struct->capacity;
     data_struct->capacity *= RESIZE_COEF;
-    int cap = data_struct->capacity;
+    int* cap = &data_struct->capacity;
 
-    data_struct->mem_data = (int*)realloc(data_struct->mem_data, (cap + 2) * sizeof(int)); 
-    list_ptr->mem_next = (int*)realloc(list_ptr->mem_next, (cap + 2) * sizeof(int));
-    list_ptr->mem_prev = (int*)realloc(list_ptr->mem_prev, (cap + 2) * sizeof(int));
+    data_struct->mem_data = (int*)realloc(data_struct->mem_data, (*cap + 2) * sizeof(int)); 
+    list_ptr->mem_next = (int*)realloc(list_ptr->mem_next, (*cap + 2) * sizeof(int));
+    list_ptr->mem_prev = (int*)realloc(list_ptr->mem_prev, (*cap + 2) * sizeof(int));
 
-    NotNULL(list_ptr);
-
-    if (errno)
+    if (NotNULL(data_struct->mem_data) && NotNULL(list_ptr->mem_next) && NotNULL(list_ptr->mem_prev))
     {
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
-        return errno;
+        return -1;
     }
 
     DataInitialization(list_ptr);
 
-    for (int i = old_capacity; i < cap; i++)
+    for (int i = old_capacity; i < *cap; i++)
     {
         list_ptr->next[i] = -1;
         list_ptr->prev[i] = -1;
@@ -379,12 +443,13 @@ int Resize(List* list_ptr)
     if (errno)
     {
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
+        return -1;
     }
     else
     {
-        FileLog("Command %s of the list_ptr \"%s\" was successful, value %d\n", __FUNCTION__, list_ptr->name, cap);
+        FileLog("Command %s of the list_ptr \"%s\" was successful, value %d\n", __FUNCTION__, list_ptr->name, *cap);
+        return 0;
     }
-    return errno;
 }
 
 

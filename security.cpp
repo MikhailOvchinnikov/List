@@ -138,20 +138,19 @@ void Dump(const List* list_ptr, int line, const char* func, const char* file)
     FileLog("\t}\n");
 }
 
-void ListExists(List* list_ptr)
+int ListExists(void* ptr)
 {
-    Data* data_struct = list_ptr->data;
-
-    if (!list_ptr || !list_ptr->data || !data_struct->mem_data ||
-        !list_ptr->mem_next || !list_ptr->mem_prev)
+    if (!ptr)
     {
         FileLog("\n\n\t\tBAD LIST\n\n\n");
         errno = ErrorCodes::BADLIST;
+        return -1;
     }
+    return 0;
 }
 
 
-void AssertFunction(List* list_ptr, int line, const char* func, const char* file)
+int AssertFunction(List* list_ptr, int line, const char* func, const char* file)
 {
     ListExists(list_ptr);
     if (!errno)
@@ -172,5 +171,14 @@ void AssertFunction(List* list_ptr, int line, const char* func, const char* file
             Dump(list_ptr, line, func, file);
             errno = ErrorCodes::BADHASH;
         }
+    }
+
+    if (errno)
+    {
+        return -1;
+    }
+    else
+    {
+        return 0;
     }
 }
