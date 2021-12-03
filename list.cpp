@@ -390,12 +390,7 @@ int Resize(List* list_ptr)
 
 void NameInititialization(char target_name[], const char get_name[])
 {
-    size_t i = 0;
-    for (i = 0; i < (strnlen(get_name, 31)); i++)
-    {
-        target_name[i] = get_name[i];
-    }
-    target_name[i] = '\0';
+    strncpy(target_name, get_name, ST_S);
 }
 
 
