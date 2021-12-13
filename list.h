@@ -3,40 +3,22 @@
 //Size of list name
 #define ST_S 32
 
-typedef struct List List;
-typedef struct Data Data;
-typedef struct List
+typedef struct Stack Stack;
+
+typedef struct LSTelem
 {
-    int can_l;
-
-    char name[ST_S] = {};
-
-    Data* data;
-
-    int* can_n_l;
-    int* mem_next;
-    int* next;
-    int* can_n_r;
-
-    int* can_p_l;
-    int* mem_prev;
-    int* prev;
-    int* can_p_r;
-
-    unsigned int hash;
-    unsigned int hash_prev;
-    unsigned int hash_next;
-
-    int can_r;
-} List;
+    int value;
+    int prev;
+    int next;
+} LST;
 
 typedef struct Data
 {
     int can_l;
 
     int* can_d_l;
-    int* mem_data;
-    int* data;
+    LST* mem_data;
+    LST* data;
     int* can_d_r;
 
     int head;
@@ -51,13 +33,41 @@ typedef struct Data
     int can_r;
 } Data;
 
+typedef struct List
+{
+    int can_l;
 
+    char name[ST_S] = {};
+
+    Data* data;
+
+    Stack* free_p;
+
+    unsigned int hash;
+
+    int can_r;
+} List;
+
+
+/// <summary>
+/// Set right positions of List elements
+/// </summary>
+/// <param name="list_ptr">Transmitted List</param>
+/// <returns>0 if all operations were right, else -1</returns>
+int Linearization(List* list_ptr);
+
+
+/// <summary>
+/// Draw grafic struct of List
+/// </summary>
+/// <param name="list">Transmitted List</param>
+void FileGraf(List* list);
 
 /// <summary>
 /// Create and initializate new List
 /// </summary>
 /// <param name="name">Transmitted name of List</param>
-/// <returns>Pointer to the initialized List</returns>
+/// <returns>Pointer to the initialized List or -1, if error has occured</returns>
 List* CreateList(const char name[]);
 
 
@@ -66,7 +76,7 @@ List* CreateList(const char name[]);
 /// </summary>
 /// <param name="list_ptr">Transmitted List</param>
 /// <param name="value">The value to put on the List</param>
-/// <returns>Return 0, if all actions were succesfull, else return error code</returns>
+/// <returns>Return 0, if all actions were succesfull, else return -1</returns>
 int PushBack(List* list_ptr, int value);
 
 
@@ -75,7 +85,7 @@ int PushBack(List* list_ptr, int value);
 /// </summary>
 /// <param name="list_ptr">Transmitted List</param>
 /// <param name="value">The value to put on the List</param>
-/// <returns>Return 0, if all actions were succesfull, else return error code</returns>
+/// <returns>Return 0, if all actions were succesfull, else return -1</returns>
 int PushFront(List* list_ptr, int value);
 
 
@@ -85,7 +95,7 @@ int PushFront(List* list_ptr, int value);
 /// <param name="list_ptr">Transmitted List</param>
 /// <param name="position">Place at the List for insert the element</param>
 /// <param name="value">The value to put on the List</param>
-/// <returns>Return 0, if all actions were succesfull, else return error code</returns>
+/// <returns>Return 0, if all actions were succesfull, else return -1</returns>
 int Insert(List* list_ptr, int position, int value);
 
 
@@ -94,7 +104,7 @@ int Insert(List* list_ptr, int position, int value);
 /// </summary>
 /// <param name="list_ptr">Transmitted List</param>
 /// <param name="value">Transmitted pointer to the variable</param>
-/// <returns>Return 0, if all actions were succesfull, else return error code</returns>
+/// <returns>Return 0, if all actions were succesfull, else return -1</returns>
 int PopBack(List* list_ptr, int* value);
 
 
@@ -103,7 +113,7 @@ int PopBack(List* list_ptr, int* value);
 /// </summary>
 /// <param name="list_ptr">Transmitted List</param>
 /// <param name="value">Transmitted pointer to the variable</param>
-/// <returns>Return 0, if all actions were succesfull, else return error code</returns>
+/// <returns>Return 0, if all actions were succesfull, else return e-1</returns>
 int PopFront(List* list_ptr, int* value);
 
 
@@ -112,7 +122,7 @@ int PopFront(List* list_ptr, int* value);
 /// </summary>
 /// <param name="list_ptr">Transmitted List</param>
 /// <param name="n">Place at the List for delete element</param>
-/// <returns>Return 0, if all actions were succesfull, else return error code</returns>
+/// <returns>Return 0, if all actions were succesfull, else return -1</returns>
 int RemoveElem(List* list_ptr, int n);
 
 
@@ -121,7 +131,7 @@ int RemoveElem(List* list_ptr, int n);
 /// </summary>
 /// <param name="list_ptr">Transmitted List</param>
 /// <param name="dst">Transmitted pointer to the variable</param>
-/// <returns>Return 0, if all actions were succesfull, else return error code</returns>
+/// <returns>Return 0, if all actions were succesfull, else return -1</returns>
 int Size(List* stack, int* dst);
 
 /// <summary>
@@ -129,7 +139,7 @@ int Size(List* stack, int* dst);
 /// </summary>
 /// <param name="list_ptr">Transmitted List</param>
 /// <param name="dst">Transmitted pointer to the variable</param>
-/// <returns>Return 0, if all actions were succesfull, else return error code</returns>
+/// <returns>Return 0, if all actions were succesfull, else return -1</returns>
 int Capacity(List* stack, int* dst);
 
 
@@ -137,7 +147,7 @@ int Capacity(List* stack, int* dst);
 /// Increase list_ptr capacity of the List or do nothing, if list_ptr is empty
 /// </summary>
 /// <param name="list_ptr">Transmitted List</param>
-/// <returns>Return 0, if all actions were succesfull, else return error code</returns>
+/// <returns>Return 0, if all actions were succesfull, else return -1</returns>
 int Resize(List* list_ptr);
 
 

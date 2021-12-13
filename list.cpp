@@ -1,3 +1,5 @@
+//stack.h frmo Stack progect
+#include "..\..\Stack_dinamic\Stack_dinamic\stack.h"
 
 #include "list.h"
 #include "security.h"
@@ -40,26 +42,25 @@ List* CreateList(const char name[])
         return nullptr;
     }
 
-    Data* data_struct = list_ptr->data;
+    Data* data_ptr = list_ptr->data;
 
-    data_struct->mem_data = (int*)calloc(INITIAL_SIZE + 2, sizeof(int));
-    list_ptr->mem_next = (int*)calloc(INITIAL_SIZE + 2, sizeof(int));
-    list_ptr->mem_prev = (int*)calloc(INITIAL_SIZE + 2, sizeof(int));
+    data_ptr->mem_data = (LST*)calloc(sizeof(LST) * INITIAL_SIZE + 2 * sizeof(int), sizeof(char));
 
-    if (NotNULL(data_struct->mem_data) || NotNULL(list_ptr->mem_next) || NotNULL(list_ptr->mem_prev))
+
+    if (NotNULL(data_ptr->mem_data))
     {
         CleanList(list_ptr);
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
         return nullptr;
     }
 
-    data_struct->capacity = INITIAL_SIZE;
-    data_struct->size = 0;
-    data_struct->head = 0;
-    data_struct->tail = 0;
+    data_ptr->capacity = INITIAL_SIZE;
+    data_ptr->size = 0;
+    data_ptr->head = 0;
+    data_ptr->tail = 0;
 
-    data_struct->can_l = CANARY;
-    data_struct->can_r = CANARY;
+    data_ptr->can_l = CANARY;
+    data_ptr->can_r = CANARY;
     list_ptr->can_l = CANARY;
     list_ptr->can_r = CANARY;
 
@@ -67,8 +68,16 @@ List* CreateList(const char name[])
 
     for (int i = 0; i < INITIAL_SIZE; i++)
     {
-        list_ptr->next[i] = -1;
-        list_ptr->prev[i] = -1;
+        data_ptr->data[i].next = -1;
+        data_ptr->data[i].prev = -1;
+    }
+
+    Stack* stack = CreateStack("Free_places");
+    list_ptr->free_p = stack;
+
+    for (int i = data_ptr->capacity - 1; i > 0; i--)
+    {
+        Push(list_ptr->free_p, i);
     }
 
     NameInititialization(list_ptr->name, name);
@@ -87,6 +96,35 @@ List* CreateList(const char name[])
 }
 
 
+void FileGraf(List* list_ptr)
+{
+    FILE* file = fopen("grafic_list.txt", "w");
+    fprintf(file, "digraph List {\n");
+    fprintf(file, "rankdir=TB;\n");
+    Data* data_ptr = list_ptr->data;
+    LST* data_struct = data_ptr->data;
+    for (int i = 0; i < data_ptr->capacity; i++)
+    {
+        fprintf(file, "\t\"box %d\" [shape=plaintext, label=<\n<table>\n\t", i); 
+        fprintf(file, "<tr><td port='adress'>adress % d</td><td rowspan='2' port='prev'>prev %d</td><td rowspan='2' port='next'>next %d</td></tr>\n\t",
+            i, data_struct[i].prev, data_struct[i].next); 
+        fprintf(file, "<tr><td port='data'>data %d</td></tr>\n</table>\n\t>]; \n", data_struct[i].value);
+        if (i > 0)
+        {
+            fprintf(file, "\t\"box %d\":next->\"box %d\":prev [color=white];\n", i - 1, i);
+        }
+    }
+    int i = data_ptr->head;
+    while(data_struct[i].next != -2)
+    {
+        fprintf(file, "\t\"box %d\":next->\"box %d\":prev;\n", i, data_struct[i].next);
+        i = data_struct[i].next;
+    }
+    fprintf(file, "}\n");
+    fclose(file);
+}
+
+
 int PushBack(List* list_ptr, int value)
 {
     if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
@@ -95,11 +133,9 @@ int PushBack(List* list_ptr, int value)
         return -1;
     }
 
-    Data* data_struct = list_ptr->data;
-    int* cap = &data_struct->capacity;
-    int* size = &data_struct->size;
+    Data* data_ptr = list_ptr->data;
 
-    if (*size == *cap)
+    if (data_ptr->size == data_ptr->capacity)
     {
         if (Resize(list_ptr))
         {
@@ -108,30 +144,29 @@ int PushBack(List* list_ptr, int value)
         }
     }
 
-    if (*size == 0)
+    LST* data_struct = data_ptr->data;
+
+    if (data_ptr->size == 0)
     {
-        data_struct->data[0] = value;
-        list_ptr->next[0] = 0;
-        data_struct->tail = 0;
-        ++*size;
+        data_struct[0].value = value;
+        data_struct[0].next = -2;
+        data_struct[0].prev = -2;
+        data_ptr->tail = 0;
+        ++data_ptr->size;
     }
     else
     {
-        for (int i = 0; i < *cap; i++)
-        {
-            if (list_ptr->next[i] == -1)
-            {
-                data_struct->data[i] = value;
-                list_ptr->next[i] = data_struct->head;
+        float ti = 0;
+        Pop(list_ptr->free_p, &ti); 
+        int i = (int)ti;
+        data_struct[i].value = value;
+        data_struct[i].next = -2;
 
-                int temp_next = data_struct->tail;
-                list_ptr->next[temp_next] = i;
-                list_ptr->prev[i] = temp_next;
-                data_struct->tail = i;
-                break;
-            }
-        }
-        ++*size;
+        int temp_next = data_ptr->tail;
+        data_struct[temp_next].next = i;
+        data_struct[i].prev = temp_next;
+        data_ptr->tail = i;
+        ++data_ptr->size;
     }
     HashClear(list_ptr);
     HashCalc(list_ptr);
@@ -156,11 +191,9 @@ int PushFront(List* list_ptr, int value)
         return -1;
     }
 
-    Data* data_struct = list_ptr->data;
-    int *cap = &data_struct->capacity;
-    int *size = &data_struct->size;
+    Data* data_ptr = list_ptr->data;
 
-    if (*size == *cap)
+    if (data_ptr->size == data_ptr->capacity)
     {
         if (Resize(list_ptr))
         {
@@ -168,31 +201,29 @@ int PushFront(List* list_ptr, int value)
         }
     }
 
-    if (size == 0)
+    LST* data_struct = data_ptr->data;
+
+    if (data_ptr->size == 0)
     {
-        data_struct->data[0] = value;
-        list_ptr->next[0] = 0;
-        data_struct->tail = 0;
-        ++*size;
+        data_struct[0].value = value;
+        data_struct[0].next = -2;
+        data_struct[0].prev = -2;
+        data_ptr->tail = 0;
+        ++data_ptr->size;
     }
     else
     {
-        for (int i = 0; i < *cap; i++)
-        {
-            if (list_ptr->next[i] == -1)
-            {
-                data_struct->data[i] = value;
+        float ti = 0;
+        Pop(list_ptr->free_p, &ti);
+        int i = (int)ti;
+        data_struct[i].value = value;
 
-                int* temp_next = &(data_struct->head);
-                list_ptr->next[i] = *temp_next;
-                list_ptr->next[data_struct->tail] = i;
-                list_ptr->prev[i] = 0;
-                list_ptr->prev[*temp_next] = i;
-                data_struct->head = i;
-                break;
-            }
-        }
-        ++*size;
+        int temp_next = data_ptr->head;
+        data_struct[i].next = temp_next;
+        data_struct[i].prev = 0;
+        data_struct[temp_next].prev = i;
+        data_ptr->head = i;
+        ++data_ptr->size;
     }
     HashClear(list_ptr);
     HashCalc(list_ptr);
@@ -217,11 +248,9 @@ int Insert(List* list_ptr, int position, int value)
         return -1;
     }
 
-    Data* data_struct = list_ptr->data;
-    int* cap = &data_struct->capacity;
-    int* size = &data_struct->size;
+    Data* data_ptr = list_ptr->data;
 
-    if (*size == *cap)
+    if (data_ptr->size == data_ptr->capacity)
     {
         if (Resize(list_ptr))
         {
@@ -230,20 +259,22 @@ int Insert(List* list_ptr, int position, int value)
         }
     }
 
-    for (int i = 0; i < *cap; i++)
+    LST* data_struct = data_ptr->data;
+
+    float ti = 0;
+    Pop(list_ptr->free_p, &ti);
+    int i = (int)ti;
+
+    if (position > data_ptr->size)
     {
-        if (list_ptr->next[i] == -1)
-        {
-            int* lpp = &(list_ptr->prev[position]);
-            data_struct->data[i] = value;
-            list_ptr->next[i] = list_ptr->next[*lpp];
-            list_ptr->next[*lpp] = i;
-            list_ptr->prev[i] = *lpp;
-            *lpp = i;
-            break;
-        }
+        position = data_ptr->tail;
     }
-    ++*size;
+    data_struct[i].value = value;
+    data_struct[i].next = position;
+    data_struct[data_struct[position].prev].next = i;
+    data_struct[i].prev = data_struct[position].prev;
+    data_struct[position].prev = i; 
+    ++data_ptr->size;
     HashClear(list_ptr);
     HashCalc(list_ptr);
     if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
@@ -267,16 +298,18 @@ int PopBack(List* list_ptr, int* value)
         return -1;
     }
 
-    Data* data_struct = list_ptr->data;
-    int tail = data_struct->tail;
-    *value = data_struct->data[tail];
+    Data* data_ptr = list_ptr->data;
+    LST* data_struct = data_ptr->data;
+    int last_tail = data_ptr->tail;
 
-    data_struct->tail = list_ptr->prev[tail];
-    list_ptr->next[tail] = -1;
-    list_ptr->next[data_struct->tail] = 0;
-    list_ptr->prev[tail] = -1;
-    data_struct->size--;
+    *value = data_struct[last_tail].value;
 
+    data_ptr->tail = data_struct[last_tail].prev;
+    data_struct[last_tail].next = -1;
+    data_struct[last_tail].prev = -1;
+    data_ptr->size--;
+
+    Push(list_ptr->free_p, last_tail);
     HashClear(list_ptr);
     HashCalc(list_ptr);
     if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
@@ -300,15 +333,17 @@ int PopFront(List* list_ptr, int* value)
         return -1;
     }
 
-    Data* data_struct = list_ptr->data;
-    int* size = &data_struct->size;
-    int head = list_ptr->data->head;
-    *value = data_struct->data[head];
-    data_struct->head = list_ptr->next[head];
-    list_ptr->prev[head] = -1;
-    list_ptr->prev[head] = 0;
-    list_ptr->next[head] = -1;
-    --*size;
+    Data* data_ptr = list_ptr->data;
+    LST* data_struct = data_ptr->data;
+    int last_head = data_ptr->head;
+    *value = data_struct[last_head].value;
+
+    data_ptr->head = data_struct[last_head].next;
+    data_struct[last_head].prev = -1;
+    data_struct[last_head].next = -1;
+    --data_ptr->size;
+
+    Push(list_ptr->free_p, last_head);
     HashClear(list_ptr);
     HashCalc(list_ptr);
     if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
@@ -332,14 +367,38 @@ int RemoveElem(List* list_ptr, int n)
         return -1;
     }
 
-    Data* data_struct = list_ptr->data;
-    int* size = &data_struct->size;
-    int value = data_struct->data[n];
-    list_ptr->next[list_ptr->prev[n]] = list_ptr->next[n];
-    list_ptr->prev[list_ptr->next[n]] = list_ptr->prev[n];
-    list_ptr->next[n] = -1;
-    list_ptr->prev[n] = -1;
-    --*size;
+    Data* data_ptr = list_ptr->data;
+    LST* data_struct = data_ptr->data;
+
+    if (data_struct[n].next == -1)
+    {
+        return 0;
+    }
+    int value = data_struct[n].value;
+
+    if (n == data_ptr->head)
+    {
+        data_ptr->head = data_struct[n].next;
+        data_struct[data_ptr->head].prev = -2;
+    }
+    if (n == data_ptr->tail)
+    {
+        data_ptr->tail = data_struct[n].prev;
+        data_struct[data_ptr->tail].next = -2;
+    }
+    if (data_struct[n].prev != -2)
+    {
+        data_struct[data_struct[n].prev].next = data_struct[n].next;
+    }
+    if (data_struct[n].next != -2)
+    {
+        data_struct[data_struct[n].next].prev = data_struct[n].prev;
+    }
+    data_struct[n].next = -1;
+    data_struct[n].prev = -1;
+    --data_ptr->size;
+    float pos = 0;
+    Push(list_ptr->free_p, n);
     HashClear(list_ptr);
     HashCalc(list_ptr);
     if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
@@ -362,9 +421,9 @@ int Size(List* list_ptr, int* dst)
         FileLog("Error command %s of the stack \"%s\"\n", __FUNCTION__, list_ptr->name);
         return -1;
     }
-    Data* data_struct = list_ptr->data;
+    Data* data_ptr = list_ptr->data;
 
-    *dst = data_struct->size;
+    *dst = data_ptr->size;
 
     if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
     {
@@ -386,9 +445,9 @@ int Capacity(List* list_ptr, int* dst)
         FileLog("Error command %s of the stack \"%s\"\n", __FUNCTION__, list_ptr->name);
         return -1;
     }
-    Data* data_struct = list_ptr->data;
+    Data* data_ptr = list_ptr->data;
 
-    *dst = data_struct->capacity;
+    *dst = data_ptr->capacity;
 
     if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
     {
@@ -412,18 +471,15 @@ int Resize(List* list_ptr)
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
         return -1;
     }
+    Data* data_ptr = list_ptr->data;
 
-    Data* data_struct = list_ptr->data;
+    int old_capacity = data_ptr->capacity;
+    data_ptr->capacity *= RESIZE_COEF;
+    int cap = data_ptr->capacity;
 
-    int old_capacity = data_struct->capacity;
-    data_struct->capacity *= RESIZE_COEF;
-    int* cap = &data_struct->capacity;
+    data_ptr->mem_data = (LST*)realloc(data_ptr->mem_data, sizeof(LST) * cap + 2 * sizeof(int));
 
-    data_struct->mem_data = (int*)realloc(data_struct->mem_data, (*cap + 2) * sizeof(int)); 
-    list_ptr->mem_next = (int*)realloc(list_ptr->mem_next, (*cap + 2) * sizeof(int));
-    list_ptr->mem_prev = (int*)realloc(list_ptr->mem_prev, (*cap + 2) * sizeof(int));
-
-    if (NotNULL(data_struct->mem_data) && NotNULL(list_ptr->mem_next) && NotNULL(list_ptr->mem_prev))
+    if (NotNULL(data_ptr->mem_data))
     {
         FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
         return -1;
@@ -431,10 +487,17 @@ int Resize(List* list_ptr)
 
     DataInitialization(list_ptr);
 
-    for (int i = old_capacity; i < *cap; i++)
+    LST* data_struct = data_ptr->data;
+
+    for (int i = old_capacity; i < cap; i++)
     {
-        list_ptr->next[i] = -1;
-        list_ptr->prev[i] = -1;
+        data_struct[i].next = -1;
+        data_struct[i].prev = -1;
+    }
+
+    for (int i = data_ptr->capacity - 1; i > old_capacity - 1; i--)
+    {
+        Push(list_ptr->free_p, i);
     }
 
     HashClear(list_ptr);
@@ -447,7 +510,7 @@ int Resize(List* list_ptr)
     }
     else
     {
-        FileLog("Command %s of the list_ptr \"%s\" was successful, value %d\n", __FUNCTION__, list_ptr->name, *cap);
+        FileLog("Command %s of the list_ptr \"%s\" was successful, value %d\n", __FUNCTION__, list_ptr->name, cap);
         return 0;
     }
 }
@@ -461,29 +524,108 @@ void NameInititialization(char target_name[], const char get_name[])
 
 void DataInitialization(List* list_ptr)
 {
-    Data* data_struct = list_ptr->data;
-    int* ptr_data = data_struct->mem_data;
-    int cap = data_struct->capacity;
+    Data* data_ptr = list_ptr->data;
+
+    int* p_data = (int*)data_ptr->mem_data;
+    data_ptr->data = (LST*)(p_data + 1);
+
+    LST* data_struct = data_ptr->data;
+    int cap = data_ptr->capacity;
+
+    int* beg_data = (int*)data_ptr->mem_data;
+    *beg_data = CANARY;
+
+    int* end_data = (int*)&data_ptr->data[cap];
+    *end_data = CANARY;
+
+    data_ptr->can_d_r = end_data;
+    data_ptr->can_d_l = beg_data;
+}
 
 
-    ptr_data[0] = CANARY;
-    list_ptr->mem_next[0] = CANARY;
-    list_ptr->mem_prev[0] = CANARY;
+int Compare(const void* first,const void* second)
+{
+    LST* n_f = (LST*)first;
+    LST* n_s = (LST*)second;
+    return (n_f->next - n_s->next);
+}
 
-    ptr_data[cap + 1] = CANARY;
-    list_ptr->mem_next[cap + 1] = CANARY;
-    list_ptr->mem_prev[cap + 1] = CANARY;
 
-    list_ptr->can_n_l = &list_ptr->mem_next[0];
-    list_ptr->can_p_l = &list_ptr->mem_prev[0];
-    list_ptr->can_n_r = &list_ptr->mem_next[cap + 1];
-    list_ptr->can_p_r = &list_ptr->mem_prev[cap + 1];
-    data_struct->can_d_r = &ptr_data[cap + 1];
-    data_struct->can_d_l = &ptr_data[0];
+int Linearization(List* list_ptr)
+{
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
+    {
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
+        return -1;
+    }
 
-    list_ptr->next = &list_ptr->mem_next[1];
-    list_ptr->prev = &list_ptr->mem_prev[1];
-    data_struct->data = &ptr_data[1];
+    Data* data_ptr = list_ptr->data;
+    LST* data_struct = data_ptr->data;
+
+    int pos = 0;
+    int n_ind = data_ptr->head;
+    int val = 0;
+    int next = 0;
+    int prev = 0;
+    for (int i = 0; i < list_ptr->data->capacity; i++)
+    {
+        if (pos != n_ind)
+        {
+            val = data_struct[pos].value;
+            next = data_struct[pos].next;
+            prev = data_struct[pos].prev;
+            if (data_struct[n_ind].next != -1 && data_struct[n_ind].next != -2)
+            {
+                data_struct[data_struct[n_ind].next].prev = pos;
+            }
+            if (data_struct[n_ind].prev != -1 && data_struct[n_ind].prev != -2)
+            {
+                data_struct[data_struct[n_ind].prev].next = pos;
+            }
+            if (next != -1 && next != -2)
+            {
+                data_struct[next].prev = n_ind;
+            }
+            if (prev != -1 && prev != -2)
+            {
+                data_struct[prev].next = n_ind;
+            }
+            prev = data_struct[pos].prev;
+            data_struct[pos].value = data_struct[n_ind].value;
+            data_struct[pos].next = data_struct[n_ind].next;
+            data_struct[pos].prev = data_struct[n_ind].prev;
+            data_struct[n_ind].value = val;
+            data_struct[n_ind].next = next;
+            data_struct[n_ind].prev = prev;
+        }
+        n_ind = list_ptr->data->data[pos].next;
+        pos++;
+        if (n_ind == -2)
+        {
+            data_ptr->head = 0;
+            data_ptr->tail = pos - 1;
+            break;
+        }
+    }
+    CleanDataStk(list_ptr->free_p);
+    for (int i = data_ptr->capacity - 1; i > data_ptr->size; i--)
+    {
+        Push(list_ptr->free_p, i);
+    }
+
+
+    HashClear(list_ptr);
+    HashCalc(list_ptr);
+    if (ListOK(list_ptr, __LINE__, __FUNCTION__, __FILE__))
+    {
+        FileLog("Error command %s of the list_ptr \"%s\"\n", __FUNCTION__, list_ptr->name);
+        return -1;
+    }
+    else
+    {
+        FileLog("Command %s of the list_ptr \"%s\" was successful\n", __FUNCTION__, list_ptr->name);
+        return 0;
+    }
 }
 
 
@@ -493,8 +635,6 @@ void CleanList(List* list_ptr)
 
     free(list_ptr->data->mem_data);
     free(list_ptr->data);
-    free(list_ptr->mem_next);
-    free(list_ptr->mem_prev);
     free(list_ptr);
 
     FileLog("Deleting was successful");
